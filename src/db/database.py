@@ -29,8 +29,7 @@ def init_db():
             approach_score  INTEGER,
             code_score      INTEGER,
             overall_score   INTEGER,
-            feedback        TEXT,
-            pattern_summary TEXT
+            feedback        TEXT
         )
     """)
 
@@ -165,6 +164,19 @@ def get_session_count():
     count = cursor.fetchone()["count"]
     conn.close()
     return count
+
+def create_session(values: dict):
+    conn = get_connection()
+    cursor = conn.cursor()
+    columns = ", ".join(values.keys())
+    placeholders = ", ".join("?" for _ in values)
+    cursor.execute(
+        f"INSERT INTO sessions ({columns}) VALUES ({placeholders})",
+        tuple(values.values()),
+    )
+    conn.commit()
+    conn.close()
+
 
 
 if __name__ == "__main__":

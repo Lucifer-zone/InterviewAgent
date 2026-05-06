@@ -1,15 +1,16 @@
 
 from langgraph.types import interrupt
-from pydantic import Field, BaseModel
+from pydantic import BaseModel, Field
 
-from src.llm import llm
+from src.graph import State
+from src.llm import llm, to_text
 
 class UserApproach(BaseModel):
     approach: str = Field(description="Approach proposed by the candidate")
     reason: str = Field(description="Specific flaw in the approach used as a hint — do not reveal the solution or optimal algorithm")
     correct: bool = Field(description="True if the approach is logically sound and interview-acceptable, even if not the most optimal")
 
-def ask_approach_node(state) -> dict:
+def ask_approach_node(state: State) -> dict:
     approach_history = []
     user_approach = interrupt("Let's move to approach, Tell me your approach for this problem")
     
@@ -45,8 +46,9 @@ def ask_approach_node(state) -> dict:
             f"- Keep it to 2-3 sentences\n"
             f"- End by asking them to revise their approach"
         )
-        approach_history[-1]["probe"] = llm_reply_to_approach.content
-        user_approach = interrupt(llm_reply_to_approach.content)
+        probe_text = to_text(llm_reply_to_approach.content)
+        approach_history[-1]["probe"] = probe_text
+        user_approach = interrupt(probe_text)
 
     return {"approach_responses": approach_history}
 
