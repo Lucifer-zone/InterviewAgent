@@ -4,9 +4,10 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from src.db.database import create_session
+from src.db.database import create_company_readiness, create_session, get_user_preferences
 from src.graph import State
 from src.llm import llm
+from src.nodes.fetch_problem import COMPANY_BARS, DIFFICULTY_ORDER
 
 
 class EvaluationResult(BaseModel):
@@ -74,9 +75,11 @@ def evaluate_node(state: State) -> dict:
         f"  Tip: {code.tip}"
     )
 
+    timestamp = datetime.now().isoformat()
+
     create_session({
         "id": str(uuid.uuid4()),
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": timestamp,
         "problem_slug": state.problem_slug,
         "problem_title": state.problem_slug.replace("-", " ").title(),
         "difficulty": state.difficulty,
@@ -89,6 +92,23 @@ def evaluate_node(state: State) -> dict:
         "overall_score": overall_score,
         "feedback": feedback.summary,
     })
+
+    prefs = get_user_preferences() or {}
+    target_companies = json.loads(prefs.get("target_companies") or "[]")
+    problem_diff_level = DIFFICULTY_ORDER.get(state.difficulty.upper(), 1)
+
+    for company in target_companies:
+        bar = COMPANY_BARS.get(company, {}).get("difficulty", DIFFICULTY_ORDER["MEDIUM"])
+        # Full credit at or above the bar; partial when the problem is easier than the bar.
+        alignment = min(1.0, problem_diff_level / bar)
+        readiness = round(overall_score * alignment, 2)
+
+        create_company_readiness({
+            "id": str(uuid.uuid4()),
+            "timestamp": timestamp,
+            "company": company,
+            "readiness_score": readiness,
+        })
 
     return {
         "feedback": feedback.summary,

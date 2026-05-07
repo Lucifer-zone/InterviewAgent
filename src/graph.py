@@ -1,5 +1,8 @@
+import os
+import sqlite3
+
+from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import StateGraph, START, END
-from langgraph.checkpoint.memory import MemorySaver
 from pydantic import BaseModel, Field
 
 
@@ -70,4 +73,11 @@ graph_builder.add_edge("evaluate", "analyze_patterns")
 graph_builder.add_edge("analyze_patterns", "show_feedback")
 graph_builder.add_edge("show_feedback", END)
 
-app = graph_builder.compile(checkpointer=MemorySaver())
+CHECKPOINT_DB = os.path.join(os.path.dirname(__file__), "../data/checkpoints.db")
+os.makedirs(os.path.dirname(CHECKPOINT_DB), exist_ok=True)
+
+_conn = sqlite3.connect(CHECKPOINT_DB, check_same_thread=False)
+checkpointer = SqliteSaver(_conn)
+checkpointer.setup()
+
+app = graph_builder.compile(checkpointer=checkpointer)

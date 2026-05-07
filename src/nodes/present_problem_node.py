@@ -16,10 +16,10 @@ def present_problem_node(state: State) -> dict:
 
     display = (
         f"Difficulty: {state.difficulty}\n"
-        f"Pattern: {state.target_pattern}\n\n"
+        # f"Pattern: {state.target_pattern}\n\n"
         f"Problem: {state.problem_slug}\n"
         f"{description}"
     )
 
-    interrupt(display)
+    print(display)
     return {}

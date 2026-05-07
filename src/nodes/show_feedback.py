@@ -1,5 +1,3 @@
-from langgraph.types import interrupt
-
 from src.db.database import get_most_recent_session
 from src.graph import State
 
@@ -8,6 +6,9 @@ def show_feedback(state: State) -> dict:
     session = get_most_recent_session()
 
     lines = [
+        "",
+        "Nice job! Here's your session feedback:",
+        "",
         "=" * 60,
         "Session Feedback",
         "=" * 60,
@@ -38,7 +39,7 @@ def show_feedback(state: State) -> dict:
             "",
         ]
 
-    lines += ["=" * 60, "Press enter to continue."]
+    lines += ["=" * 60]
 
-    interrupt("\n".join(lines))
+    print("\n".join(lines))
     return {}

@@ -7,7 +7,10 @@ from src.llm import llm, to_text
 
 class UserApproach(BaseModel):
     approach: str = Field(description="Approach proposed by the candidate")
-    reason: str = Field(description="Specific flaw in the approach used as a hint — do not reveal the solution or optimal algorithm")
+    reason: str = Field(
+        description="Why the candidate's current step is wrong, described in terms of what it actually does — "
+                    "NOT what they should do instead. Internal analyst note; never shown verbatim to the candidate."
+    )
     correct: bool = Field(description="True if the approach is logically sound and interview-acceptable, even if not the most optimal")
 
 def ask_approach_node(state: State) -> dict:
@@ -41,10 +44,16 @@ def ask_approach_node(state: State) -> dict:
             f"Why it needs improvement:\n{user_approach_analysis.reason}\n\n"
             f"Approach history:\n{approach_history}\n\n"
             f"Instructions:\n"
-            f"- Identify the specific weakness in their approach without giving away the fix\n"
-            f"- Ask one focused question to nudge them in the right direction\n"
-            f"- Keep it to 2-3 sentences\n"
-            f"- End by asking them to revise their approach"
+            f"- Ask about the consequences of the candidate's CURRENT (incorrect) decision — "
+            f"NOT about what they should do instead.\n"
+            f"- Do NOT name or describe the corrected behavior in your question. "
+            f"The candidate must arrive at the fix themselves.\n"
+            f"- Anchor the question to specifics from their approach (variable names, the action they're taking).\n"
+            f"- When possible, ground the question in a concrete input or trace the candidate can mentally execute. "
+            f"e.g. 'Trace your algorithm on s=\"abba\" — at r=3, what does l become?' is better than "
+            f"'Re-examine your handling of duplicates.'\n"
+            f"- Keep it to 2-3 sentences.\n"
+            f"- End by asking them to revise their approach."
         )
         probe_text = to_text(llm_reply_to_approach.content)
         approach_history[-1]["probe"] = probe_text

@@ -178,6 +178,19 @@ def create_session(values: dict):
     conn.close()
 
 
+def create_company_readiness(values: dict):
+    conn = get_connection()
+    cursor = conn.cursor()
+    columns = ", ".join(values.keys())
+    placeholders = ", ".join("?" for _ in values)
+    cursor.execute(
+        f"INSERT INTO company_readiness ({columns}) VALUES ({placeholders})",
+        tuple(values.values()),
+    )
+    conn.commit()
+    conn.close()
+
+
 
 if __name__ == "__main__":
     init_db()

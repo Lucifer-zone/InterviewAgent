@@ -121,7 +121,7 @@ def fetch_problem(state: State) -> dict:
         prefs,
     )
 
-    print(f"Selected pattern: {target_pattern}, difficulty: {target_difficulty}")
+    # print(f"Selected pattern: {target_pattern}, difficulty: {target_difficulty}")
 
     problem = fetch_problems(target_pattern, target_difficulty)
     attempted_slugs = get_attempted_slugs()

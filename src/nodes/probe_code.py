@@ -31,8 +31,8 @@ def probe_code_node(state: State) -> dict:
                 f"You are an interviewer probing a candidate's code.\n"
                 f"Decide if another question is needed. If the code is solid "
                 f"and previous answers were strong, set needs_more=False.\n\n"
-                f"Problem:\n{state['problem_description']}\n\n"
-                f"Code:\n{state['code']}\n\n"
+                f"Problem:\n{state.problem_description}\n\n"
+                f"Code:\n{state.code}\n\n"
                 f"Already asked:\n{prior}"
         )
 
