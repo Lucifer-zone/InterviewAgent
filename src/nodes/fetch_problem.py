@@ -1,4 +1,6 @@
 import json
+from datetime import datetime
+
 from src.graph import State
 from src.db.database import (
     get_user_preferences,
@@ -21,6 +23,14 @@ COMPANY_BARS = {
     "Cohere": {"difficulty": DIFFICULTY_ORDER["HARD"], "focus": ["dynamic-programming", "graph", "tree"]},
 }
 
+def rank_problem_quality(problem):
+    # likes/dislikes not available in list API; use acRate as quality proxy
+    # Sweet spot: 40-70% acceptance — not trivial, not obscure
+    ac_rate = problem.get("acRate") or 0.0
+    if ac_rate == 0:
+        return 0
+    distance_from_sweet = abs(ac_rate - 0.55)
+    return round(max(0.0, 1.0 - distance_from_sweet * 2), 3)
 
 def _pick_weakest_candidate(candidates, current_pattern):
     stats = get_pattern_stats()
@@ -48,16 +58,33 @@ def get_company_max_difficulty_level(prefs):
     return max(company_difficulty_levels, default=DIFFICULTY_ORDER["MEDIUM"])
 
 
+MONTHLY_PLAN = {
+    1: ["two-pointers", "sliding-window", "prefix-sum", "hash-table"],
+    2: ["stack", "queue", "linked-list"],
+    3: ["tree", "graph", "topological-sort"],
+    4: ["heap", "binary-search"],
+    5: ["dynamic-programming"],
+}
+
+def get_current_focus():
+    start_date = datetime(2026, 4, 7)
+    months_elapsed = (datetime.now() - start_date).days // 30
+    current_month = min(months_elapsed + 1, 5)
+    return MONTHLY_PLAN[current_month]
+
 def select_pattern(prefs):
-    focus_patterns = json.loads(prefs.get("focus_patterns") or "[]")
+    plan_focus = get_current_focus()
+
     company_focus = []
-    for c in json.loads(prefs.get('target_companies')):
+    for c in json.loads(prefs.get('target_companies') or '[]'):
         if c in COMPANY_BARS:
             company_focus.extend(COMPANY_BARS[c]["focus"])
     company_focus = list(set(company_focus))
 
-    if focus_patterns:
-        candidates = focus_patterns
+    if plan_focus:
+        candidates = plan_focus
+    elif prefs.get("focus_patterns"):
+        candidates = json.loads(prefs.get("focus_patterns"))
     elif company_focus:
         candidates = company_focus
     else:
@@ -69,8 +96,9 @@ def select_pattern(prefs):
     recent_session = get_most_recent_session()
     current_pattern = recent_session.get("target_pattern") if recent_session else None
 
-    if not current_pattern:
-        return candidates[0]
+    # If the last-practiced pattern isn't in this month's plan, force a switch.
+    if current_pattern not in candidates:
+        return _pick_weakest_candidate(candidates, current_pattern) if current_pattern else candidates[0]
 
     sessions = get_sessions_for_pattern(current_pattern, limit=3)
 
@@ -123,9 +151,21 @@ def fetch_problem(state: State) -> dict:
 
     # print(f"Selected pattern: {target_pattern}, difficulty: {target_difficulty}")
 
-    problem = fetch_problems(target_pattern, target_difficulty)
-    attempted_slugs = get_attempted_slugs()
-    available = [p for p in problem if p['titleSlug'] not in attempted_slugs]
+    problems = fetch_problems(target_pattern, target_difficulty, limit=80)
+    attempted = get_attempted_slugs()
+    available = [p for p in problems if not p.get('paidOnly') and p['titleSlug'] not in attempted]
+
+    # Score and rank
+    for p in available:
+        p['quality_score'] = rank_problem_quality(p)
+
+    # Filter out low quality; fall back to all available if none pass
+    quality = [p for p in available if p['quality_score'] > 0.5]
+    if quality:
+        available = quality
+
+    # Best problem first
+    available.sort(key=lambda p: p['quality_score'], reverse=True)
 
     if not available:
         return {}

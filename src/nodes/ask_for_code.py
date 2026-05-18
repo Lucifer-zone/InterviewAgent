@@ -11,7 +11,12 @@ class UserCode(BaseModel):
 
 
 def ask_for_code(state: State) -> dict:
-    user_code = interrupt("Let's move on to coding. Share your code once you're done.")
+    user_code = interrupt(
+        f"Let's move on to coding.\n\n"
+        f"You can use LeetCode to write and test your code:\n"
+        f"https://leetcode.com/problems/{state.problem_slug}/\n\n"
+        f"Share your code once you're done."
+    )
 
     for _ in range(2):
         result = llm.with_structured_output(UserCode).invoke(

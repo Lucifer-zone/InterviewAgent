@@ -20,6 +20,7 @@ def fetch_problems(tag=None, difficulty=None, limit=10):
                 titleSlug
                 difficulty
                 acRate
+                paidOnly
                 topicTags {
                     name
                     slug
@@ -53,6 +54,9 @@ def fetch_problems(tag=None, difficulty=None, limit=10):
     )
 
     data = response.json()
+    if "data" not in data or data["data"] is None:
+        print("LeetCode API error:", data)
+        return []
     return data["data"]["problemsetQuestionListV2"]["questions"]
 
 

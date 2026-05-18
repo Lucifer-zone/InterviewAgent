@@ -7,9 +7,18 @@ from src.llm import llm, to_text
 
 class UserApproach(BaseModel):
     approach: str = Field(description="Approach proposed by the candidate")
+    trace: str = Field(
+        description="Brief step-by-step trace of the candidate's approach on the problem's example input(s). "
+                    "Include intermediate state and the final output the approach produces. Internal note."
+    )
+    counterexample: str = Field(
+        description="A specific input on which the approach produces the wrong output, with the produced vs "
+                    "expected outputs. Empty string if you cannot construct one. Internal note."
+    )
     reason: str = Field(
-        description="Why the candidate's current step is wrong, described in terms of what it actually does — "
-                    "NOT what they should do instead. Internal analyst note; never shown verbatim to the candidate."
+        description="If correct=False, describe what the approach actually does on the counterexample input "
+                    "(what goes wrong, in concrete terms — not what the candidate should do instead). "
+                    "Empty string when correct=True. Internal note; never shown verbatim to the candidate."
     )
     correct: bool = Field(description="True if the approach is logically sound and interview-acceptable, even if not the most optimal")
 
@@ -23,12 +32,23 @@ def ask_approach_node(state: State) -> dict:
             f"You are evaluating a candidate's approach to a coding problem in a technical interview.\n\n"
             f"Problem:\n{state.problem_description}\n\n"
             f"Candidate's approach (attempt {len(approach_history) + 1} of 6):\n{user_approach}\n\n"
-            f"Evaluation criteria:\n"
-            f"- Set correct=True if the approach is logically sound and interview-acceptable "
-            f"(does not need to be the most optimal solution, just a valid one).\n"
-            f"- Set correct=False if the approach is wrong, incomplete, or significantly inefficient.\n"
-            f"- When correct=False, set reason to a specific, concise explanation of the flaw "
-            f"that serves as a hint — do not reveal the solution or optimal algorithm."
+            f"REQUIRED PROCESS — follow in order:\n"
+            f"1. In the `trace` field, simulate the candidate's approach step-by-step on the example "
+            f"input(s) from the problem statement. Show intermediate state and the final output produced.\n"
+            f"2. Compare the produced output to the expected output for each example.\n"
+            f"3. If the approach produced wrong output on any example, set correct=False, populate "
+            f"`counterexample` with that example input + produced vs expected, and explain in `reason`.\n"
+            f"4. If the approach produced correct output on all examples, attempt to construct a "
+            f"counterexample input. If you can construct one, set correct=False and populate the "
+            f"fields. If you cannot, set correct=True (leave `counterexample` and `reason` empty).\n\n"
+            f"CRITICAL RULES:\n"
+            f"- Do NOT set correct=False based on intuition, unfamiliarity, or the approach being "
+            f"non-canonical. Many problems have multiple valid solutions.\n"
+            f"- A correct=False verdict REQUIRES a specific counterexample input you can name.\n"
+            f"- 'Significantly inefficient' (e.g. O(n^2) when O(n) is expected) also counts as "
+            f"correct=False, but only after you have traced the approach and confirmed correctness; "
+            f"in that case `counterexample` may be the largest constraint input that would time out, "
+            f"and `reason` should describe the inefficiency.\n"
         )
         approach["user_response"] = user_approach
         approach["attempt_number"] = len(approach_history) + 1
@@ -41,17 +61,14 @@ def ask_approach_node(state: State) -> dict:
             f"Guide them toward the correct approach through hints and questions — NEVER reveal the solution or optimal algorithm.\n\n"
             f"Problem:\n{state.problem_description}\n\n"
             f"Candidate's current approach:\n{user_approach}\n\n"
-            f"Why it needs improvement:\n{user_approach_analysis.reason}\n\n"
-            f"Approach history:\n{approach_history}\n\n"
+            f"Counterexample where the approach fails:\n{user_approach_analysis.counterexample}\n\n"
+            f"What the approach does wrong on that input:\n{user_approach_analysis.reason}\n\n"
             f"Instructions:\n"
-            f"- Ask about the consequences of the candidate's CURRENT (incorrect) decision — "
+            f"- Ground the question in the counterexample above — ask the candidate to trace their "
+            f"approach on that specific input, or ask what their approach produces vs the expected output.\n"
+            f"- Ask about the consequences of the candidate's CURRENT decision — "
             f"NOT about what they should do instead.\n"
-            f"- Do NOT name or describe the corrected behavior in your question. "
-            f"The candidate must arrive at the fix themselves.\n"
-            f"- Anchor the question to specifics from their approach (variable names, the action they're taking).\n"
-            f"- When possible, ground the question in a concrete input or trace the candidate can mentally execute. "
-            f"e.g. 'Trace your algorithm on s=\"abba\" — at r=3, what does l become?' is better than "
-            f"'Re-examine your handling of duplicates.'\n"
+            f"- Do NOT name or describe the corrected behavior. The candidate must arrive at the fix themselves.\n"
             f"- Keep it to 2-3 sentences.\n"
             f"- End by asking them to revise their approach."
         )

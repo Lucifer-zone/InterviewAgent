@@ -43,6 +43,13 @@ def init_db():
     """)
 
     cursor.execute("""
+        CREATE TABLE IF NOT EXISTS seen_slugs (
+            slug    TEXT PRIMARY KEY,
+            seen_at TEXT NOT NULL
+        )
+    """)
+
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_preferences (
             id                  INTEGER PRIMARY KEY DEFAULT 1,
             name                TEXT NOT NULL,
@@ -86,10 +93,42 @@ def save_user_preference(key, value):
 def get_attempted_slugs():
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT problem_slug FROM sessions")
-    slugs = [row["problem_slug"] for row in cursor.fetchall()]
+    cursor.execute("""
+        SELECT problem_slug AS slug FROM sessions
+        UNION
+        SELECT slug FROM seen_slugs
+    """)
+    slugs = [row["slug"] for row in cursor.fetchall()]
     conn.close()
     return slugs
+
+
+def mark_slug_seen(slug: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT OR IGNORE INTO seen_slugs (slug, seen_at) VALUES (?, datetime('now'))",
+        (slug,)
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_session_count() -> int:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) AS cnt FROM sessions")
+    count = cursor.fetchone()["cnt"]
+    conn.close()
+    return count
+
+
+def clear_seen_slugs():
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM seen_slugs")
+    conn.commit()
+    conn.close()
 
 def get_last_sessions(limit=20):
     conn = get_connection()
@@ -121,6 +160,21 @@ def get_most_recent_session():
     row = cursor.fetchone()
     conn.close()
     return dict(row) if row else None
+
+
+def get_sessions_for_patterns(patterns: list, limit: int = 10) -> list:
+    if not patterns:
+        return []
+    placeholders = ','.join('?' * len(patterns))
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        f"SELECT * FROM sessions WHERE target_pattern IN ({placeholders}) ORDER BY timestamp DESC LIMIT ?",
+        (*patterns, limit)
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
 
 
 def get_sessions_for_pattern(pattern: str, limit: int = 3) -> list:
