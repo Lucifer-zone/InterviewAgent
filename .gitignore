@@ -205,3 +205,12 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# macOS
+.DS_Store
+
+# InterviewAgent runtime data
+data/checkpoints.db
+data/checkpoints.db-shm
+data/checkpoints.db-wal
+data/gradio_history.json
