@@ -10,18 +10,10 @@ from src.db.database import (
     get_pattern_stats,
 )
 from src.tools.leetcode_api import fetch_problems, fetch_problem_description
+from src.utils.readiness import COMPANY_BARS, DIFFICULTY_ORDER
 
 DIFFICULTY_REVERSE = {1: "EASY", 2: "MEDIUM", 3: "HARD"}
 LEVEL_TO_DIFFICULTY = {"BEGINNER": "EASY", "INTERMEDIATE": "MEDIUM", "ADVANCED": "MEDIUM"}
-DIFFICULTY_ORDER = {"EASY": 1, "MEDIUM": 2, "HARD": 3}
-
-COMPANY_BARS = {
-    "Glean": {"difficulty": DIFFICULTY_ORDER["MEDIUM"], "focus": ["graph", "heap-priority-queue", "sliding-window"]},
-    "GitLab": {"difficulty": DIFFICULTY_ORDER["MEDIUM"], "focus": ["array", "string", "hash-table"]},
-    "Grafana": {"difficulty": DIFFICULTY_ORDER["MEDIUM"], "focus": ["array", "hash-table", "stack"]},
-    "Supabase": {"difficulty": DIFFICULTY_ORDER["MEDIUM"], "focus": ["tree", "graph", "hash-table"]},
-    "Cohere": {"difficulty": DIFFICULTY_ORDER["HARD"], "focus": ["dynamic-programming", "graph", "tree"]},
-}
 
 def rank_problem_quality(problem):
     # likes/dislikes not available in list API; use acRate as quality proxy

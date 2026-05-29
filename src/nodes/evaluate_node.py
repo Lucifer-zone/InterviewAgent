@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from src.db.database import clear_seen_slugs, create_company_readiness, create_session, get_session_count, get_sessions_for_patterns, get_user_preferences
 from src.graph import State
 from src.llm import llm
-from src.nodes.fetch_problem import COMPANY_BARS, DIFFICULTY_ORDER
+from src.utils.readiness import COMPANY_BARS, DIFFICULTY_ORDER, calculate_company_readiness
 
 _CONSTRAINTS_RE = re.compile(
     r'<p[^>]*>\s*<strong[^>]*>\s*Constraints:?\s*</strong>\s*</p>.*',
@@ -17,27 +17,6 @@ _CONSTRAINTS_RE = re.compile(
 
 def _strip_constraints(html: str) -> str:
     return _CONSTRAINTS_RE.sub('', html).rstrip()
-
-
-_RECENCY_WEIGHTS = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]
-
-
-def _calculate_company_readiness(company: str, bar: int) -> float:
-    patterns = COMPANY_BARS.get(company, {}).get("focus", [])
-    sessions = get_sessions_for_patterns(patterns, limit=10)
-
-    if not sessions:
-        return 0.0
-
-    readiness_scores = []
-    for s in sessions:
-        diff_level = DIFFICULTY_ORDER.get(s['difficulty'].upper(), 1)
-        alignment = min(1.0, diff_level / bar)
-        readiness_scores.append(s['overall_score'] * alignment)
-
-    weights = _RECENCY_WEIGHTS[:len(readiness_scores)]
-    weighted_sum = sum(r * w for r, w in zip(readiness_scores, weights))
-    return round(weighted_sum / sum(weights), 2)
 
 
 class EvaluationResult(BaseModel):
@@ -156,7 +135,7 @@ def evaluate_node(state: State) -> dict:
 
     for company in target_companies:
         bar = COMPANY_BARS.get(company, {}).get("difficulty", DIFFICULTY_ORDER["MEDIUM"])
-        readiness = _calculate_company_readiness(company, bar)
+        readiness = calculate_company_readiness(company, bar)
 
         create_company_readiness({
             "id": str(uuid.uuid4()),

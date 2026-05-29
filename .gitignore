@@ -214,3 +214,4 @@ data/checkpoints.db
 data/checkpoints.db-shm
 data/checkpoints.db-wal
 data/gradio_history.json
+data/interview_agent.db

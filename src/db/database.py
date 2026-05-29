@@ -142,13 +142,13 @@ def get_weakest_patterns(limit=3):
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT topic_tags, AVG(overall_score) as avg_score
+        SELECT target_pattern, AVG(overall_score) as avg_score
         FROM sessions
-        GROUP BY topic_tags
+        GROUP BY target_pattern
         ORDER BY avg_score ASC
         LIMIT ?
     """, (limit,))
-    patterns = [row["topic_tags"] for row in cursor.fetchall()]
+    patterns = [row["target_pattern"] for row in cursor.fetchall()]
     conn.close()
     return patterns
 
