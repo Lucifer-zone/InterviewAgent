@@ -108,27 +108,27 @@ A fourth `seen_slugs` table dedupes recently-served problems; it's cleared every
 git clone <repo-url>
 cd InterviewAgent
 pip3 install -r requirements.txt
-cp .env.example .env          # add GEMINI_API_KEY here if using the gemini provider
+cp .env.example .env          # add GEMINI_API_KEY (default provider is Gemini)
 ```
 
-For the default (local Ollama):
+Then just:
+
 ```bash
-ollama pull qwen2.5-coder:7b
-python3 gradio_app.py
+./agent run                   # web UI (default)
+./agent cli                   # CLI session
+./agent cli --resume          # continue the paused CLI session
+./agent graph                 # print the LangGraph as ASCII
+./agent test                  # run the test suite
+./agent help                  # show usage
 ```
 
-For cloud Gemini:
+To switch to local Ollama for any command:
+
 ```bash
-LLM_PROVIDER=gemini python3 gradio_app.py
+LLM_PROVIDER=ollama ./agent run
 ```
 
-CLI variants:
-```bash
-python3 main.py               # fresh session
-python3 main.py --resume      # continue the paused session
-python3 print_graph.py        # ASCII render of the graph
-python3 -m pytest tests/      # unit tests
-```
+(make sure the daemon is up and `ollama pull qwen2.5-coder:7b` has been done)
 
 Override models via `OLLAMA_MODEL` or `GEMINI_MODEL`. Note `requirements.txt` currently lists only the bare minimum — you also need `gradio` and `langchain-ollama` installed depending on which entrypoint and provider you use.
 

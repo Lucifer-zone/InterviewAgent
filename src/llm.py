@@ -53,7 +53,7 @@ class LLMTimingCallback(BaseCallbackHandler):
 
 # ─── Provider switch ────────────────────────────────────────────────────────
 # Flip via env: LLM_PROVIDER=ollama  OR  LLM_PROVIDER=gemini
-LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "ollama")
+LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "gemini")
 
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5-coder:7b")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-flash-lite-latest")

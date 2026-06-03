@@ -89,7 +89,9 @@ def _initial_chatbot_value() -> list:
             parts.append(block)
         parts.append(pending[0])
         first_msg = "\n\n".join(parts)
-        return [{"role": "assistant", "content": first_msg}]
+        history = [{"role": "assistant", "content": first_msg}]
+        _save_history(history)  # persist so the next user reply doesn't drop the problem block
+        return history
 
     checkpointer.delete_thread(THREAD_ID)
     _save_history([])

@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Convenience launcher for InterviewAgent.
+#
+# Usage:
+#   ./agent run        # web UI (gradio)
+#   ./agent cli        # CLI session
+#   ./agent cli --resume
+#   ./agent restart    # keep same problem, wipe clarity/approach/code state
+#   ./agent graph      # print the LangGraph as ASCII
+#   ./agent test       # run the test suite
+#
+# Tip: alias it for any-directory use:  alias agent="$(pwd)/agent"
+
+set -e
+
+# Run from the repo root regardless of where you call it from.
+cd "$(dirname "$0")"
+
+cmd="${1:-run}"
+shift || true
+
+case "$cmd" in
+    run|"")
+        exec python3 gradio_app.py "$@"
+        ;;
+    cli)
+        exec python3 main.py "$@"
+        ;;
+    restart)
+        exec python3 -m scripts.restart_problem "$@"
+        ;;
+    graph)
+        exec python3 print_graph.py "$@"
+        ;;
+    test)
+        exec python3 -m pytest tests/ "$@"
+        ;;
+    -h|--help|help)
+        sed -n '2,12p' "$0"
+        ;;
+    *)
+        echo "unknown command: $cmd" >&2
+        echo "try: ./agent help" >&2
+        exit 2
+        ;;
+esac
