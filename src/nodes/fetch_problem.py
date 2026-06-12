@@ -11,6 +11,7 @@ from src.db.database import (
 )
 from src.tools.leetcode_api import fetch_problems, fetch_problem_description
 from src.utils.readiness import COMPANY_BARS, DIFFICULTY_ORDER
+from src.db.database import clear_seen_slugs
 
 DIFFICULTY_REVERSE = {1: "EASY", 2: "MEDIUM", 3: "HARD"}
 LEVEL_TO_DIFFICULTY = {"BEGINNER": "EASY", "INTERMEDIATE": "MEDIUM", "ADVANCED": "MEDIUM"}
@@ -52,10 +53,10 @@ def get_company_max_difficulty_level(prefs):
 
 MONTHLY_PLAN = {
     1: ["two-pointers", "sliding-window", "prefix-sum", "hash-table"],
-    2: ["stack", "queue", "linked-list"],
-    3: ["tree", "graph", "topological-sort"],
-    4: ["heap", "binary-search"],
-    5: ["dynamic-programming"],
+    3: ["stack", "queue", "linked-list"],
+    4: ["tree", "graph", "topological-sort"],
+    5: ["heap", "binary-search"],
+    6: ["dynamic-programming"],
 }
 
 def get_current_focus():
@@ -101,11 +102,11 @@ def select_pattern(prefs):
     current_difficulty = DIFFICULTY_ORDER.get(sessions[0]['difficulty'].upper(), 0)
     max_difficulty_level = get_company_max_difficulty_level(prefs)
 
-    if avg <= 8:
+    if avg < 8:
         return current_pattern
-    if avg > 8 and current_difficulty < max_difficulty_level:
+    if avg >= 8 and current_difficulty < max_difficulty_level:
         return current_pattern
-    elif avg > 8 and current_difficulty >= max_difficulty_level:
+    elif avg >= 8 and current_difficulty >= max_difficulty_level:
         return _pick_weakest_candidate(candidates, current_pattern)
 
 
@@ -160,7 +161,11 @@ def fetch_problem(state: State) -> dict:
     available.sort(key=lambda p: p['quality_score'], reverse=True)
 
     if not available:
-        return {}
+        clear_seen_slugs()
+        attempted = get_attempted_slugs()
+        available = [p for p in problems if not p.get('paidOnly') and p['titleSlug'] not in attempted]
+        if not available:
+            return {}
 
     selected = available[0]
 

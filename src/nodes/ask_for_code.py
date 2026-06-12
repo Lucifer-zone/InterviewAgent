@@ -1,6 +1,7 @@
 from langgraph.types import interrupt
 from pydantic import BaseModel, Field
 
+from src import prompts
 from src.graph import State
 from src.llm import llm
 
@@ -20,11 +21,7 @@ def ask_for_code(state: State) -> dict:
 
     for _ in range(2):
         result = llm.with_structured_output(UserCode).invoke(
-            f"Extract any code block from the user's input.\n"
-            f"Set found=True and populate code verbatim if a code block is present.\n"
-            f"Set found=False and code='' if the input contains no code — "
-            f"plain text descriptions or 'I'll write it now' style responses do not count.\n\n"
-            f"User input:\n{user_code}"
+            prompts.extract_code(user_code)
         )
         if result.found and result.code:
             return {"code": result.code}

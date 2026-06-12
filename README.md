@@ -10,7 +10,7 @@ AI-powered mock technical interviewer that adapts problem selection to your skil
 - Runs a full interview loop — clarifying questions, approach with Socratic counterexample-driven probes, coding, then complexity and code follow-ups — pausing on each turn via LangGraph `interrupt`.
 - Scores each session across clarity, approach, and code (weighted 15/35/50) and stores the result in SQLite for trend analysis.
 - Tracks per-company readiness for Glean, GitLab, Grafana, Supabase, and Cohere using a difficulty-alignment formula over the last 10 sessions.
-- Detects recurring weaknesses across sessions and bumps difficulty up or down per pattern based on rolling performance.
+- Detects recurring weaknesses across sessions (based on score trends, not feedback text) and bumps difficulty up or down per pattern based on rolling performance.
 - Resumes mid-session: state and chat history are checkpointed, so closing the browser does not lose your place.
 
 ## Architecture
@@ -29,16 +29,16 @@ fetch_problem → present_problem → clarity_loop → ask_approach
 - `fetch_problem` — selects pattern + difficulty (see Key Design Decisions), queries LeetCode, ranks candidates by acceptance-rate sweet spot, picks the top unseen problem.
 - `present_problem` — strips the LeetCode "Constraints" block and prints the problem; marks the slug as seen.
 - `clarity_loop` — answers up to 6 clarifying questions in Socratic style, exits when the LLM decides the user is ready to move on.
-- `ask_approach` — has the model trace the candidate's approach on example inputs, construct a counterexample, and probe with hints until correct or 6 attempts.
+- `ask_approach` — traces the candidate's approach on example inputs with full conversation history, constructs a counterexample, and probes with hints until correct or until the approach is converging (accepted at attempt 3+ if core logic is sound).
 - `ask_for_code` — accepts a code block (verifies one is present, otherwise re-prompts up to twice).
 - `probe_code` — always asks complexity first, then up to 2 follow-ups decided by the LLM based on the code.
-- `evaluate` — scores clarity, approach, and code separately, writes feedback, persists the session, and recomputes company readiness.
+- `evaluate` — scores clarity, approach, and code separately (clarity uses the constraint-stripped problem so constraint questions are credited fairly), writes session-grounded feedback, persists the session, and recomputes company readiness.
 - `analyze_patterns` — cross-session analysis over the last 20 sessions; identifies recurring strengths and weaknesses (no-op until 5+ sessions).
 - `show_feedback` — formats the final scoreboard and feedback paragraph.
 
 ## Key Design Decisions
 
-**Pattern and difficulty selection are rule-based, not LLM-driven.** The pattern picker reads a hardcoded monthly plan, the user's target-company focus areas, and the rolling average score over the last 3 sessions on the current pattern. If the rolling average crosses 8 and the current difficulty is at or above the highest bar across the user's target companies, it rotates to the weakest pattern from the candidate set. Difficulty bumps the same way: avg < 5 drops a level, 5–7 holds, > 7 promotes up to the company ceiling. This logic is deterministic, testable, and free — there is no value in burning an LLM call to do arithmetic over historical scores.
+**Pattern and difficulty selection are rule-based, not LLM-driven.** The pattern picker reads a hardcoded monthly plan, the user's target-company focus areas, and the rolling average score over the last 3 sessions on the current pattern. If the rolling average reaches 8 or above and the current difficulty is at or above the highest bar across the user's target companies, it rotates to the weakest untested pattern from the candidate set. Difficulty bumps the same way: avg < 5 drops a level, 5–7 holds, ≥ 8 promotes up to the company ceiling. This logic is deterministic, testable, and free — there is no value in burning an LLM call to do arithmetic over historical scores.
 
 **State is intentionally lean.** The `State` Pydantic model only carries fields read by more than one node — `problem_description`, `clarity_questions`, `approach_responses`, `code`, `followup_answers`, `feedback`, scores. Anything that's only consumed inside one node (e.g. clarifying-question loop history while the loop is running) lives in local variables. Anything that needs to survive across sessions (preferences, session history, seen slugs) is written straight to SQLite. LangGraph replays nodes from the top on resume, so a thin state minimizes both checkpoint size and the surface area for replay bugs.
 
@@ -100,7 +100,7 @@ created_at          TEXT
 updated_at          TEXT
 ```
 
-A fourth `seen_slugs` table dedupes recently-served problems; it's cleared every 10 sessions so the pool refreshes.
+A fourth `seen_slugs` table dedupes recently-served problems; it's cleared automatically when the available problem pool is exhausted so the pool refreshes without repeating problems mid-session.
 
 ## How to Run
 
@@ -158,8 +158,12 @@ InterviewAgent/
 │   │   ├── evaluate_node.py
 │   │   ├── analyze_patterns_node.py
 │   │   └── show_feedback.py
-│   └── tools/
-│       └── leetcode_api.py    # GraphQL client
+│   ├── tools/
+│   │   └── leetcode_api.py    # GraphQL client
+│   ├── utils/
+│   │   └── readiness.py       # company readiness formula + COMPANY_BARS/DIFFICULTY_ORDER constants
+│   └── mcp/
+│       └── server.py          # MCP server exposing session data tools
 ├── tests/
 │   ├── test_db_helpers.py
 │   └── test_fetch_problem.py
@@ -170,5 +174,5 @@ InterviewAgent/
 - Voice mode — speech-in / speech-out so the session feels closer to a real phone screen.
 - Hint system — explicit "I'm stuck" command that surfaces graduated hints without ending the approach loop.
 - Weekly digest — scheduled summary email of patterns practiced, readiness deltas, and a recommended focus for next week.
-- MCP integration — expose problem-fetching and session history as MCP tools so the agent can be driven from other clients.
+- MCP server (partial) — `src/mcp/server.py` exposes session history, pattern stats, and company readiness as MCP tools; connect to Claude Desktop via `claude_desktop_config.json`. LeetCode problem-fetching as a second MCP server is planned.
 - System design mode — second graph for open-ended design rounds, with rubric-driven probing instead of counterexample-driven probing.

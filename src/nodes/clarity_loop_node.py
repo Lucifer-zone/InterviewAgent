@@ -1,6 +1,7 @@
 from langgraph.types import interrupt
 from pydantic import BaseModel, Field
 
+from src import prompts
 from src.graph import State
 from src.llm import llm, to_text
 
@@ -16,21 +17,13 @@ def clarity_loop_node(state: State) -> dict:
 
     while len(questions) < 6:
         user_input_analysis = llm.with_structured_output(ClarifyingQuestions).invoke(
-            f"Analyse the User input\n"
-            f"and see if user is asking any clarifying question about the problem\n"
-            f"If user's intent is to not ask any further clarifying question\n"
-            f"then set complete=True\n"
-            f"User input: {user_input}"
+            prompts.clarity_intent_analysis(user_input)
         )
         if user_input_analysis.complete:
             return {"clarity_questions": questions}
 
         answer = llm.invoke(
-            f"Reply to the candidate's clarifying question about the problem in simple and concise language. "
-            f"DO NOT reveal the solution. After answering, ask if they have any other clarifying questions.\n\n"
-            f"Clarifying question: {user_input_analysis.question}\n"
-            f"Problem:\n{state.problem_description}\n\n"
-            f"Past clarifying questions: {questions}"
+            prompts.clarity_answer(user_input_analysis.question, state.problem_description, questions)
         )
         questions.append(user_input_analysis.question)
         user_input = interrupt(to_text(answer.content))

@@ -1,6 +1,7 @@
 from langgraph.types import interrupt
 from pydantic import BaseModel, Field
 
+from src import prompts
 from src.graph import State
 from src.llm import llm
 
@@ -28,12 +29,7 @@ def probe_code_node(state: State) -> dict:
             for f in followup_answers
         )
         result = llm.with_structured_output(ProbeDecision).invoke(
-                f"You are an interviewer probing a candidate's code.\n"
-                f"Decide if another question is needed. If the code is solid "
-                f"and previous answers were strong, set needs_more=False.\n\n"
-                f"Problem:\n{state.problem_description}\n\n"
-                f"Code:\n{state.code}\n\n"
-                f"Already asked:\n{prior}"
+                prompts.probe_decision(state.problem_description, state.code, prior)
         )
 
         if not result.needs_more:

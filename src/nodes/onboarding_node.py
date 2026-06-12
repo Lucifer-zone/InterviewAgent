@@ -3,6 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 from src.llm import llm
+from src import prompts
 from src.graph import State
 from src.db.database import save_user_preference
 from langgraph.types import interrupt
@@ -32,7 +33,7 @@ VALID_COMPANIES = ["Glean", "GitLab", "Grafana", "Supabase", "Cohere"]
 def onboarding_node(state: State) -> dict:
     name = interrupt("Welcome! What's your name?")
     result = llm.with_structured_output(Name).invoke(
-        "Extract the name of User from this sentence and return in expected format, Sentence: " + name
+        prompts.extract_name(name)
     )
     save_user_preference("name", result.name)
 
@@ -42,8 +43,7 @@ def onboarding_node(state: State) -> dict:
         f"(comma separated)"
     )
     result = llm.with_structured_output(TargetCompanies).invoke(
-        f"Extract the target companies from:  {companies}\n"
-        f"Only include companies from this list: {VALID_COMPANIES}"
+        prompts.extract_companies(companies, VALID_COMPANIES)
     )
 
     valid = [c for c in result.companies if c in VALID_COMPANIES ]
@@ -55,8 +55,7 @@ def onboarding_node(state: State) -> dict:
         )
 
         result = llm.with_structured_output(TargetCompanies).invoke(
-            f"Extract the target companies from:  {companies}\n"
-            f"Only include companies from this list: {VALID_COMPANIES}"
+            prompts.extract_companies(companies, VALID_COMPANIES)
         )
 
     save_user_preference("target_companies", json.dumps(result.companies))
@@ -68,7 +67,7 @@ def onboarding_node(state: State) -> dict:
         "- advanced (can solve most hards)"
     )
     result = llm.with_structured_output(Level).invoke(
-        "Extract the User current level from sentence: " + level
+        prompts.extract_level(level)
     )
     save_user_preference("current_level", result.level)
 
@@ -79,10 +78,7 @@ def onboarding_node(state: State) -> dict:
     )
 
     result = llm.with_structured_output(FocusPatterns).invoke(
-        f"Extract focus patterns from: '{focus}'\n"
-        f"If user wants to skip or has no preference, set skipped=True\n"
-        f"Valid patterns: dynamic-programming, graph, sliding-window, "
-        f"tree, hash-table, array, stack, heap, two-pointers"
+        prompts.extract_focus_patterns(focus)
     )
 
     if not result.skipped and result.focus:
@@ -93,7 +89,7 @@ def onboarding_node(state: State) -> dict:
         "(default: 3)"
     )
     result = llm.with_structured_output(WeeklyGoal).invoke(
-        "Extract the User's weekly goal from sentence: " + weekly_goal
+        prompts.extract_weekly_goal(weekly_goal)
     )
     save_user_preference("weekly_goal", result.weekly_goal)
 

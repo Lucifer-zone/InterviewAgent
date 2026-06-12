@@ -7,7 +7,7 @@ from contextlib import redirect_stdout
 import gradio as gr
 from langgraph.types import Command
 
-from src.db.database import init_db
+from src.db.database import init_db, clear_seen_slugs
 from src.graph import app, checkpointer
 from src.llm import logger
 

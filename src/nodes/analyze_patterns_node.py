@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 
 from src.db.database import get_last_sessions
+from src import prompts
 from src.graph import State
 from src.llm import llm
 
@@ -26,11 +27,7 @@ def analyze_patterns(state: State) -> dict:
     ]
 
     analysis = llm.with_structured_output(PatternAnalysis).invoke(
-        f"Analyze the user's performance across their last {len(last_sessions)} coding interview practice sessions.\n"
-        f"Identify specific patterns/topics they consistently handle well and ones they consistently struggle with. "
-        f"Look for trends — a single bad session does not make a weakness; recurring issues across multiple sessions do.\n\n"
-        f"Sessions (most recent first):\n"
-        + "\n".join(rows)
+        prompts.pattern_analysis(len(last_sessions), rows)
     )
 
     summary = (
