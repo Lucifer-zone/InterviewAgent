@@ -3,3 +3,7 @@ langchain-google-genai
 python-dotenv
 requests
 mcp
+langchain-community
+langchain-openai
+chromadb
+beautifulsoup4

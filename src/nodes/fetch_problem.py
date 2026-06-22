@@ -53,10 +53,10 @@ def get_company_max_difficulty_level(prefs):
 
 MONTHLY_PLAN = {
     1: ["two-pointers", "sliding-window", "prefix-sum", "hash-table"],
-    3: ["stack", "queue", "linked-list"],
-    4: ["tree", "graph", "topological-sort"],
-    5: ["heap", "binary-search"],
-    6: ["dynamic-programming"],
+    2: ["stack", "queue", "linked-list"],
+    3: ["tree", "graph", "topological-sort"],
+    4: ["heap", "binary-search"],
+    5: ["dynamic-programming"],
 }
 
 def get_current_focus():
@@ -95,7 +95,7 @@ def select_pattern(prefs):
 
     sessions = get_sessions_for_pattern(current_pattern, limit=3)
 
-    if len(sessions) < 3:
+    if len(sessions) < 6:
         return current_pattern
 
     avg = sum(s.get('overall_score', 0) for s in sessions) / len(sessions)
